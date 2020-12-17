@@ -20,10 +20,12 @@ test_d2["rad"] = val2
 query_param = {
     "geoId": "",
     "keywords": "computer science internship",
-    "location": "San Francisco"
+    "location": "San Francisco, CA"
 }
 
 encoded_query = urlencode(query_param)
+print("encoded")
+print(encoded_query)
 linked_query = f"https://www.linkedin.com/jobs/search/?{encoded_query}"
 
 print(linked_query)

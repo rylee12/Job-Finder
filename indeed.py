@@ -1,6 +1,13 @@
 import requests
-import time
+import pandas as pd
 from bs4 import BeautifulSoup
+from urllib.parse import urlencode
+
+"""
+Features:
+1. Look for start-ups
+2. Sort stuff based on certain critera i.e. keywords, salary. Include/exclude
+"""
 
 """
 Searching category: miles, location, job words, salary?
@@ -10,116 +17,198 @@ Undecided category: Job type, education level, date posted
 """
 
 """
-Rating star number: ratingsContent
-Company name:
-Number of days posted ago:
+q = keywords to search for
+l = location
+radius = distance within location to search
+fromage = date posted
+jt = job type
 """
 
-def test():
-    #indeed_base_url = "https://www.indeed.com/jobs?"
-    based = "https://www.indeed.com"
-    test_url = "https://www.indeed.com/jobs?q=computer+science&l=San+Francisco%2C+CA"
-
-    r = requests.get(test_url)
-
-    result = r.content
-
-    soup = BeautifulSoup(result, 'lxml')
-    #print(soup.prettify())
-
-    m = soup.find(class_="jobsearch-SerpJobCard unifiedRow row result")
-    #print(m)
-    t = m.find(attrs={"data-tn-element": "jobTitle"})
-    b = m.find(attrs={"data-tn-element": "companyName"})
-    c = m.find(class_="ratingsContent")
-    d = m.find(class_="location accessible-contrast-color-location")
-    #e = m.find()
-    f = m.find(class_="salaryText")
-    g = m.find(class_="icl-Ratings-count")
-    h = t.get("href")
-    i = m.find(class_="date")
-    j = m.find(class_="summary")
-    #print(t["title"])
-    print(t.get_text().strip())
-    print(b.get_text().strip())
-    print(c.get_text().strip())
-    
-    print(d.get_text().strip())
-    print(f.get_text().strip())
-    print(i.get_text().strip())
-    print(j.get_text().strip())
-    # when the href is retrieved, a special link combination is generated. It also leaves out the base website
-    #print(h)
-    print(based + str(h))
-
-
-    #location
-
-
-    #job_column = soup.find(id="resultsCol")
-
-    #jobs = job_column.find_all(class_="jobsearch-SerpJobCard unifiedRow row result")
-    #print(jobs)
+search_dict = {
+    "q": "computer science",
+    "l": "San Francisco, CA"
+}
 
 def indeed_scraper():
+    #test_url = "https://www.indeed.com/jobs?q=computer+science&l=San+Francisco%2C+CA"
+    #search_url = test_url
+    page = "0"
+
+    encoded_query = urlencode(search_dict)
+    search_url = f"https://www.indeed.com/jobs?{encoded_query}"
+
+    job_list = []
+    a = []
+    b = []
+    c = []
+    d = []
+    e = []
+    f = []
+    g = []
+    h = []
+
+    while page != "1":
+        r = requests.get(search_url)
+
+        result = r.content
+
+        soup = BeautifulSoup(result, 'lxml')
+        
+        job_column = soup.find(id="resultsCol")
+        jobs = job_column.find_all(class_="jobsearch-SerpJobCard unifiedRow row result")
+
+        # get the page number to go to the next page
+        t = job_column.find(attrs={"aria-current": "true"})
+        page = t.text.strip()
+        #print(page)
+        """
+        if t.text.strip() == "2":
+            print("I got it!")
+            break
+        else:
+            print("You're lousy")
+            print(t.text.strip())
+        """
+        
+        search_url = get_next(soup)
+        #print(search_url)
+
+        for item in jobs:
+            #print("inner loop")
+
+            title = item.find(attrs={"data-tn-element": "jobTitle"})
+            if title is not None:
+                title_txt = title.text.strip() 
+            else:
+                title_txt = "None"
+
+            href = title.get("href")
+            link = f"https://www.indeed.com{href}"
+
+            company = item.find(class_="company")
+            if company is not None:
+                company_txt = company.text.strip()
+            else:
+                company_txt = "N/A"
+
+            rating = item.find(class_="ratingsContent")
+            if rating is not None:
+                rating_txt = rating.text.strip()
+            else:
+                rating_txt = "N/A"
+
+            location = item.find(class_="location accessible-contrast-color-location")
+            if location is not None:
+                location_txt = location.text.strip()
+            else:
+                location_txt = "None"
+
+            money = item.find(class_="salaryText")
+            if money is not None:
+                money_txt = money.text.strip()
+            else:
+                money_txt = "N/A"
+
+            date = item.find(class_="date")
+            if date is not None:
+                date_txt = date.text.strip()
+            else:
+                date_txt = "N/A"
+
+            summary = item.find(class_="summary")
+            if summary is not None:
+                summary_txt = summary.text.strip()
+            else:
+                summary_txt = "N/A"
+
+            a.append(title_txt)
+            b.append(company_txt)
+            c.append(rating_txt)
+            d.append(location_txt)
+            e.append(money_txt)
+            f.append(date_txt)
+            g.append(summary_txt)
+            h.append(link)
+            """
+            job_dict = {
+                "title": title_txt,
+                "company": company_txt,
+                "rating": rating_txt,
+                "location": location_txt,
+                "money": money_txt,
+                "date": date_txt,
+                "summary": summary_txt,
+                "href": link,
+            }
+
+            job_list.append(job_dict)
+            """
+
+
+    print("debug the pandas")    
+    #print(pd.get_option("display.max_columns"))
+    #pd.set_option('display.max_columns', 0)    
+    job_info = pd.DataFrame(data={'Title': a,
+    'Company': b,
+    'Rating': c,
+    'Location': d,
+    'Money': e,
+    'Date': f,
+    'Summary': g,
+    'Href': h
+    })
+    print(job_info)
+    #print(job_info.info())
+    #print(job_info.head())
+    #for elem in job_list:
+    #    print(elem)
+    #    print("\n")
+    job_info['Summary'] = job_info['Summary'].str.replace('\n',' ')
+    job_info.to_csv("job.csv", sep='\t', encoding='utf-8', index=False, header=True)
+        
+
+def test_loop():
     #indeed_base_url = "https://www.indeed.com/jobs?"
     based = "https://www.indeed.com"
     test_url = "https://www.indeed.com/jobs?q=computer+science&l=San+Francisco%2C+CA"
+    page = "0"
 
-    r = requests.get(test_url)
-
-    result = r.content
-
-    soup = BeautifulSoup(result, 'lxml')
+    url_loop = test_url
     
-    job_column = soup.find(id="resultsCol")
-    jobs = job_column.find_all(class_="jobsearch-SerpJobCard unifiedRow row result")
+    while page != "3":
+        r = requests.get(url_loop)
 
-    job_list = []
+        result = r.content
 
-    for item in jobs:
-        title = item.find(attrs={"data-tn-element": "jobTitle"})
-        if title is not None:
-            title_str = ""
-        else:
-            title_str = ""
+        soup = BeautifulSoup(result, 'lxml')
         
-        link = title.get("href")
-        company = item.find(attrs={"data-tn-element": "companyName"})
-        if title is not None:
-            title_str = ""
-        else:
-            title_str = ""
+        job_column = soup.find(id="resultsCol")
+        jobs = job_column.find_all(class_="jobsearch-SerpJobCard unifiedRow row result")
 
-        rating = item.find(class_="ratingsContent")
-        if title is not None:
-            title_str = ""
-        else:
-            title_str = ""
+        for item in jobs:
+            title = item.find(attrs={"data-tn-element": "jobTitle"})
+            if title is not None:
+                print(title.text.strip())
 
-        location = item.find(class_="location accessible-contrast-color-location")
-        if title is not None:
-            title_str = ""
+        # need to move this up
+        t = job_column.find(attrs={"aria-current": "true"})
+        if t.text.strip() == "3":
+            print("I got it!")
+            break
         else:
-            title_str = ""
+            print("You're lousy")
+        
+        url_loop = get_next(soup)
+        print(url_loop)
 
-        money = item.find(class_="salaryText")
-        if title is not None:
-            title_str = ""
-        else:
-            title_str = ""
+def get_next(soup):
+    next_tm = soup.find(attrs={"aria-label": "Next"})
+    # Check to see if there is another page or not
+    if next_tm is not None:
+        return f"https://www.indeed.com{next_tm['href']}"
+    return ""    
 
-        date = item.find(class_="date")
-        if title is not None:
-            title_str = ""
-        else:
-            title_str = ""
-
-        summary = item.find(class_="summary")
-        if title is not None:
-            title_str = ""
-        else:
-            title_str = ""
 
 #test()
+#test_loop()
 indeed_scraper()
