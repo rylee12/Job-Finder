@@ -1,6 +1,7 @@
 # Job-Finder
 **Disclosure:**
-Some websites do not approve of webscraping and may IP ban you if they detect it, linkedin included. Please use at your own risk. Do not use my program, modified or not, to webscrape private information.
+- Some websites do not approve of webscraping and may IP ban you if they detect it, linkedin included. Please use at your own risk. Do not use my program, modified or not, to webscrape private information.
+- The program will take long. This is intentional design to avoid anti-webscraping measures.
 
 **Installation:**
 This program uses python, so use the terminal to pip install the packages. Website to find the packages: https://pypi.org/
@@ -18,6 +19,6 @@ the file and replace the PATH variable in the program with the new address of yo
 
 **How to Use**
 LinkedIn Job Scraper:
-- To search for a certain job, replace the search_url with the url you want to search.
+- To find information for a job, input the job and parameters into linkedin.com/jobs and then copy the url and place it in the search_url variable.
 - To modify which pages are searched, replace the values in the range() function.
 - To run LinkedIn Job Scraper, open up the terminal, go to the file's location, and then type "python linkedin.py" to run the linkedin job scraper.
