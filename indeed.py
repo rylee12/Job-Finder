@@ -1,214 +1,130 @@
-import requests
-import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
-from urllib.parse import urlencode
+from time import sleep
+import pandas as pd
 
-"""
-Features:
-1. Look for start-ups
-2. Sort stuff based on certain critera i.e. keywords, salary. Include/exclude
-"""
+PATH = "C:\Program Files (x86)\chromedriver.exe"
 
-"""
-Searching category: miles, location, job words, salary?
-Sort by: Rating first, Relevant location first, highest salary,
-Include/Exclude: Skill, Keywords
-Undecided category: Job type, education level, date posted
-"""
+# Credit to this video: https://www.youtube.com/watch?v=QiD1lbM-utk&ab_channel=CodeHeroku
+# The code to grab the html using selenium (job.get_attribute('innerHTML')) was extremely helpful and
+# to close the pop-up
 
-"""
-q = keywords to search for
-l = location
-radius = distance within location to search
-fromage = date posted
-jt = job type
-"""
+def any_string(str_to_check, word_list):
+    return any(x in str_to_check for x in word_list)
 
-search_dict = {
-    "q": "computer science",
-    "l": "San Francisco, CA"
-}
-
-def indeed_scraper():
-    #test_url = "https://www.indeed.com/jobs?q=computer+science&l=San+Francisco%2C+CA"
-    #search_url = test_url
-    page = "0"
-
-    encoded_query = urlencode(search_dict)
-    search_url = f"https://www.indeed.com/jobs?{encoded_query}"
-
-    job_list = []
-    a = []
-    b = []
-    c = []
-    d = []
-    e = []
-    f = []
-    g = []
-    h = []
-
-    while page != "1":
-        r = requests.get(search_url)
-
-        result = r.content
-
-        soup = BeautifulSoup(result, 'lxml')
-        
-        job_column = soup.find(id="resultsCol")
-        jobs = job_column.find_all(class_="jobsearch-SerpJobCard unifiedRow row result")
-
-        # get the page number to go to the next page
-        t = job_column.find(attrs={"aria-current": "true"})
-        page = t.text.strip()
-        #print(page)
-        """
-        if t.text.strip() == "2":
-            print("I got it!")
-            break
-        else:
-            print("You're lousy")
-            print(t.text.strip())
-        """
-        
-        search_url = get_next(soup)
-        #print(search_url)
-
-        for item in jobs:
-            #print("inner loop")
-
-            title = item.find(attrs={"data-tn-element": "jobTitle"})
-            if title is not None:
-                title_txt = title.text.strip() 
-            else:
-                title_txt = "None"
-
-            href = title.get("href")
-            link = f"https://www.indeed.com{href}"
-
-            company = item.find(class_="company")
-            if company is not None:
-                company_txt = company.text.strip()
-            else:
-                company_txt = "N/A"
-
-            rating = item.find(class_="ratingsContent")
-            if rating is not None:
-                rating_txt = rating.text.strip()
-            else:
-                rating_txt = "N/A"
-
-            location = item.find(class_="location accessible-contrast-color-location")
-            if location is not None:
-                location_txt = location.text.strip()
-            else:
-                location_txt = "None"
-
-            money = item.find(class_="salaryText")
-            if money is not None:
-                money_txt = money.text.strip()
-            else:
-                money_txt = "N/A"
-
-            date = item.find(class_="date")
-            if date is not None:
-                date_txt = date.text.strip()
-            else:
-                date_txt = "N/A"
-
-            summary = item.find(class_="summary")
-            if summary is not None:
-                summary_txt = summary.text.strip()
-            else:
-                summary_txt = "N/A"
-
-            a.append(title_txt)
-            b.append(company_txt)
-            c.append(rating_txt)
-            d.append(location_txt)
-            e.append(money_txt)
-            f.append(date_txt)
-            g.append(summary_txt)
-            h.append(link)
-            """
-            job_dict = {
-                "title": title_txt,
-                "company": company_txt,
-                "rating": rating_txt,
-                "location": location_txt,
-                "money": money_txt,
-                "date": date_txt,
-                "summary": summary_txt,
-                "href": link,
-            }
-
-            job_list.append(job_dict)
-            """
-
-
-    print("debug the pandas")    
-    #print(pd.get_option("display.max_columns"))
-    #pd.set_option('display.max_columns', 0)    
-    job_info = pd.DataFrame(data={'Title': a,
-    'Company': b,
-    'Rating': c,
-    'Location': d,
-    'Money': e,
-    'Date': f,
-    'Summary': g,
-    'Href': h
-    })
-    print(job_info)
-    #print(job_info.info())
-    #print(job_info.head())
-    #for elem in job_list:
-    #    print(elem)
-    #    print("\n")
-    job_info['Summary'] = job_info['Summary'].str.replace('\n',' ')
-    job_info.to_csv("job.csv", sep='\t', encoding='utf-8', index=False, header=True)
-        
-
-def test_loop():
-    #indeed_base_url = "https://www.indeed.com/jobs?"
-    based = "https://www.indeed.com"
-    test_url = "https://www.indeed.com/jobs?q=computer+science&l=San+Francisco%2C+CA"
-    page = "0"
-
-    url_loop = test_url
+def indeed_scraper(startPage, endPage):
+    # error handling
+    if startPage > endPage or startPage < 0 or endPage < 0:
+        print("Starting page cannot be greater than end page number")
+        exit()
     
-    while page != "3":
-        r = requests.get(url_loop)
+    # Set options for selenium
+    options = Options()
+    options.add_argument('--incognito')
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36")
+    driver = webdriver.Chrome(options=options, executable_path=PATH)
+    driver.maximize_window()
 
-        result = r.content
+    dataframe = pd.DataFrame(columns=["Title", "Location", "Company", "Salary", "Rating"])
 
-        soup = BeautifulSoup(result, 'lxml')
-        
-        job_column = soup.find(id="resultsCol")
-        jobs = job_column.find_all(class_="jobsearch-SerpJobCard unifiedRow row result")
+    # convert startPage and endPage to values for range()
+    start = (startPage - 1) * 10
+    end = endPage * 10
+    print(start)
+    print(end)
 
-        for item in jobs:
-            title = item.find(attrs={"data-tn-element": "jobTitle"})
-            if title is not None:
-                print(title.text.strip())
+    # lists to hold keywords to parse for in description
+    include = []
+    exclude = []
 
-        # need to move this up
-        t = job_column.find(attrs={"aria-current": "true"})
-        if t.text.strip() == "3":
-            print("I got it!")
-            break
-        else:
-            print("You're lousy")
-        
-        url_loop = get_next(soup)
-        print(url_loop)
+    # count the number of posts counted and skipped
+    skips = 0
+    count = 0
 
-def get_next(soup):
-    next_tm = soup.find(attrs={"aria-label": "Next"})
-    # Check to see if there is another page or not
-    if next_tm is not None:
-        return f"https://www.indeed.com{next_tm['href']}"
-    return ""    
+    # main body
+    for i in range(start, end, 10):
+        driver.get("https://www.indeed.com/jobs?q=Senior+Software+Engineer&l=Philadelphia%2C+PA&start=" + str(i))
+        #driver.get("https://www.indeed.com/jobs?q=engineering+python+stealth+mode&l=San+Francisco+Bay+Area%2C+CA&start=" + str(i))
+        driver.implicitly_wait(6)
+        sleep(2)
 
+        all_jobs = driver.find_elements_by_class_name('jobsearch-SerpJobCard')
+        print(len(all_jobs))
 
-#test()
-#test_loop()
-indeed_scraper()
+        for job in all_jobs:
+            # beautifulsoup is a bit faster
+            result_html = job.get_attribute('innerHTML')
+            soup = BeautifulSoup(result_html, 'html.parser')
+
+            # try and except requires less line, can't use .text on none object
+            try:
+                title = soup.find("a", class_="jobtitle").text.strip()
+            except:
+                title = 'None'
+
+            try:
+                location = soup.find(class_="location").text.strip()
+            except:
+                location = 'None'
+
+            try:
+                company = soup.find(class_="company").text.strip()
+            except:
+                company = 'None'
+
+            try:
+                salary = soup.find(class_="salary").text.strip()
+            except:
+                salary = 'None'
+
+            try:
+                rating = soup.find(class_="ratingsContent").text.strip()
+            except:
+                rating = 'None'
+
+            # click on the post and remove the pop-up
+            sum_div = job.find_elements_by_class_name("summary")[0]
+            try:
+                sum_div.click()
+            except:
+                close_button = driver.find_elements_by_class_name("popover-x-button-close")[0]
+                close_button.click()
+                sum_div.click()
+
+            # anti-webscraping
+            sleep(2)
+            # grab the description which is embedded in the iframe
+            try:
+                seq = driver.find_element_by_tag_name('iframe')
+                driver.switch_to.frame(seq)
+                driver.implicitly_wait(7)
+                textchat = driver.find_element_by_tag_name('body').text.replace('\n', '').strip()
+                #print(textchat)
+                driver.switch_to.parent_frame()
+
+                # search for keywords
+                if len(include) != 0 and any_string(textchat, include) == False:
+                    skips += 1
+                    continue
+
+                if len(exclude) != 0 and any_string(textchat, exclude) == True:
+                    skips += 1
+                    continue
+            except:
+                pass
+
+            dataframe = dataframe.append({'Title': title,
+                                        'Location': location,
+                                        "Company": company,
+                                        "Salary": salary,
+                                        "Rating": rating},
+                                        ignore_index=True)
+            
+            count += 1
+
+    print(dataframe)
+    print("Number of skips: " + str(skips))
+    print("Number of posts: " + str(count))
+
+indeed_scraper(1, 1)
