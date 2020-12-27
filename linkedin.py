@@ -103,11 +103,11 @@ def main1(startPage, endPage, create_csv, shorten_link, search_url):
     # Warning: Do not leave your username and password. Insert only when needed.
     username = driver.find_element_by_id("username")
     username.clear()
-    username.send_keys("error2000noname@gmail.com")
+    username.send_keys("<enter username here>")
 
     password = driver.find_element_by_id("password")
     password.clear()
-    password.send_keys("Erryumpop57")
+    password.send_keys("<enter password here>")
 
     # click the login button
     login_form = driver.find_element_by_xpath("//*[@id='app__container']/main/div[2]/form/div[3]/button")
